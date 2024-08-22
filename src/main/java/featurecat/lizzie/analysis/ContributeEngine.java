@@ -59,15 +59,21 @@ public class ContributeEngine {
   private int errorTimes;
   private String errorTips = "";
   private boolean addCacerts = false;
-  private boolean useProcessHandler = false;
+  // private boolean useProcessHandler = false;
   private boolean isSlowQuiting = false;
+  private boolean getVersion = false;
+
+  public boolean paused = false;
+  private long lastPauseResumeTime;
 
   public ContributeEngine() {
     if (Lizzie.config.contributeUseCommand) {
       engineCommand = Lizzie.config.contributeCommand;
-      if (!engineCommand.contains("-override")) engineCommand += " -override-config ";
-      if (!engineCommand.contains(" -config")) {
-        engineCommand += " \"serverUrl = https://katagotraining.org/\",";
+      if (!Lizzie.config.contributeUsePureCommand) {
+        if (!engineCommand.contains("-override")) engineCommand += " -override-config ";
+        if (!engineCommand.contains(" -config")) {
+          engineCommand += " \"serverUrl=https://katagotraining.org/\",";
+        }
       }
     } else {
       engineCommand = Lizzie.config.contributeEnginePath + " contribute";
@@ -83,14 +89,18 @@ public class ContributeEngine {
       engineCommand += " -override-config ";
       if (!useConfigFile) engineCommand += "\"serverUrl=https://katagotraining.org/\",";
     }
-    engineCommand += "\"username=" + Lizzie.config.contributeUserName + "\",";
-    engineCommand += "\"password=" + Lizzie.config.contributePassword + "\",";
-    engineCommand += "\"maxSimultaneousGames=" + Lizzie.config.contributeBatchGames + "\",";
-    engineCommand +=
-        "\"includeOwnership=" + (Lizzie.config.contributeShowEstimate ? "true" : "false") + "\",";
-    engineCommand += "\"logGamesAsJson=true\"";
+
+    if (!Lizzie.config.contributeUseCommand || !Lizzie.config.contributeUsePureCommand) {
+      engineCommand += "\"username=" + Lizzie.config.contributeUserName + "\",";
+      engineCommand += "\"password=" + Lizzie.config.contributePassword + "\",";
+      engineCommand += "\"maxSimultaneousGames=" + Lizzie.config.contributeBatchGames + "\",";
+      engineCommand +=
+          "\"includeOwnership=" + (Lizzie.config.contributeShowEstimate ? "true" : "false") + "\",";
+      if (Lizzie.config.contributeDisableRatingMatches) engineCommand += "\"maxRatingMatches=0\",";
+      engineCommand += "\"logGamesAsJson=true\"";
+    }
     RemoteEngineData remoteData = Utils.getContributeRemoteEngineData();
-    // this.useJavaSSH = remoteData.useJavaSSH;
+    this.useJavaSSH = Lizzie.config.contributeUseCommand && remoteData.useJavaSSH;
     this.ip = remoteData.ip;
     this.port = remoteData.port;
     this.userName = remoteData.userName;
@@ -110,14 +120,18 @@ public class ContributeEngine {
 
   private void startEngine() {
     hasEternalTip = false;
-    if (errorTimes > 1 && !addCacerts && !Lizzie.config.contributeUseCommand) {
-      addCacerts = true;
-      engineCommand +=
-          " -cacerts "
-              + new File(Lizzie.config.contributeEnginePath).getParent()
-              + File.separator
-              + "cacert.pem";
-      errorTimes = 0;
+    getVersion = false;
+    paused = false;
+    if (!Lizzie.config.contributeUseCommand || !Lizzie.config.contributeUsePureCommand) {
+      if (errorTimes > 1 && !addCacerts && !Lizzie.config.contributeUseCommand) {
+        addCacerts = true;
+        engineCommand +=
+            " -cacerts "
+                + new File(Lizzie.config.contributeEnginePath).getParent()
+                + File.separator
+                + "cacert.pem";
+        errorTimes = 0;
+      }
     }
     commands = Utils.splitCommand(engineCommand);
     if (this.useJavaSSH) {
@@ -134,7 +148,7 @@ public class ContributeEngine {
       }
       if (loginStatus) {
         this.inputStream = new BufferedReader(new InputStreamReader(this.javaSSH.getStdout()));
-        //    this.outputStream = new BufferedOutputStream(this.javaSSH.getStdin());
+        this.outputStream = new BufferedOutputStream(this.javaSSH.getStdin());
         this.errorStream = new BufferedReader(new InputStreamReader(this.javaSSH.getSterr()));
         javaSSHClosed = false;
       } else {
@@ -142,48 +156,48 @@ public class ContributeEngine {
         return;
       }
     } else {
-      boolean started = false;
-      if (Lizzie.config.contributeUseSlowShutdown && OS.isWindows()) {
-        File handler = new File("SubProcessHandler.exe");
-        if (!handler.exists()) {
-          Utils.copySubProcessHandler();
-        }
-        try {
-          process = Runtime.getRuntime().exec("SubProcessHandler.exe " + engineCommand);
-          started = true;
-          useProcessHandler = true;
-        } catch (IOException e) {
-          e.printStackTrace();
-          started = false;
-          useProcessHandler = false;
-        }
-        initializeStreams(true);
-      }
+      //      boolean started = false;
+      //      if (Lizzie.config.contributeUseSlowShutdown && OS.isWindows()) {
+      //        File handler = new File("SubProcessHandler.exe");
+      //        if (!handler.exists()) {
+      //          Utils.copySubProcessHandler();
+      //        }
+      //        try {
+      //          process = Runtime.getRuntime().exec("SubProcessHandler.exe " + engineCommand);
+      //          started = true;
+      //          useProcessHandler = true;
+      //        } catch (IOException e) {
+      //          e.printStackTrace();
+      //          started = false;
+      //          useProcessHandler = false;
+      //        }
+      //        initializeStreams(true);
+      //      }
 
-      if (!started) {
-        ProcessBuilder processBuilder = new ProcessBuilder(commands);
-        processBuilder.redirectErrorStream(false);
-        try {
-          process = processBuilder.start();
-        } catch (IOException e) {
-          tryToDignostic(
-              Lizzie.resourceBundle.getString("Leelaz.engineFailed")
-                  + ": "
-                  + e.getLocalizedMessage());
-          return;
-        }
-        initializeStreams(false);
-        if (Lizzie.frame.contributeView != null)
-          Lizzie.frame.contributeView.setSlowShutdownButton(false);
+      // if (!started) {
+      ProcessBuilder processBuilder = new ProcessBuilder(commands);
+      processBuilder.redirectErrorStream(false);
+      try {
+        process = processBuilder.start();
+      } catch (IOException e) {
+        tryToDignostic(
+            Lizzie.resourceBundle.getString("Leelaz.engineFailed")
+                + ": "
+                + e.getLocalizedMessage());
+        return;
       }
-      executor = Executors.newSingleThreadScheduledExecutor();
-      executor.execute(this::read);
-      executorErr = Executors.newSingleThreadScheduledExecutor();
-      executorErr.execute(this::readError);
-      isNormalEnd = false;
-      setTip(Lizzie.resourceBundle.getString("ContributeView.lblTip"));
+      initializeStreams();
+      //      if (Lizzie.frame.contributeView != null)
+      //        Lizzie.frame.contributeView.setSlowShutdownButton(false);
     }
+    executor = Executors.newSingleThreadScheduledExecutor();
+    executor.execute(this::read);
+    executorErr = Executors.newSingleThreadScheduledExecutor();
+    executorErr.execute(this::readError);
+    isNormalEnd = false;
+    setTip(Lizzie.resourceBundle.getString("ContributeView.lblTip"));
   }
+  // }
 
   private void readError() {
     String line = "";
@@ -206,7 +220,7 @@ public class ContributeEngine {
       String line = "";
       while ((line = inputStream.readLine()) != null) {
         try {
-          parseLine(line.toString());
+          if (!isNormalEnd) parseLine(line.toString());
         } catch (Exception ex) {
           ex.printStackTrace();
         }
@@ -237,30 +251,50 @@ public class ContributeEngine {
 
   private void parseLineForError(String line) {
     Lizzie.frame.addContributeLine(line, false);
-    if (useProcessHandler) {
-      if (line.equals("exited")) {
-        if (isSlowQuiting) normalQuit();
-        else process.destroy();
-      }
-    }
+    //    if (useProcessHandler) {
+    //      if (line.equals("exited")) {
+    //        if (isSlowQuiting) normalQuit();
+    //        else process.destroy();
+    //      }
+    //    }
     parseTips(line);
   }
 
   private void parseLine(String line) {
     // TODO Auto-generated method stub
+    // 2022-03-14 09:00:41+0800: KataGo v1.10.0
+    if (!getVersion && line.contains("KataGo")) {
+      String params[] = line.split(" ");
+      if (params.length == 4 && params[3].startsWith("v")) {
+        String version[] = params[3].split("\\.");
+        if (version.length == 3) {
+          try {
+            int ver1 = Integer.parseInt(version[0].substring(1));
+            int ver2 = Integer.parseInt(version[1]);
+            if (ver1 <= 1 && ver2 < 11) {
+              Utils.showMsg(
+                  Lizzie.resourceBundle.getString("Contribute.version.outOfDate")
+                      + " ("
+                      + params[3]
+                      + "), "
+                      + Lizzie.resourceBundle.getString("Contribute.version.outOfDate2"));
+              normalQuit();
+              if (Lizzie.frame.contributeView != null)
+                Lizzie.frame.contributeView.setVisible(false);
+            }
+          } catch (NumberFormatException e) {
+            e.printStackTrace();
+          }
+          getVersion = true;
+        }
+      }
+    }
     if (line.startsWith("{")) {
       // Lizzie.gtpConsole.addLine(line);
       // json game info
       if (getJsonGameInfo(tryToGetJsonString(line), contributeGames, unParseGameInfos)) {
         if (contributeGames != null) {
-          int finishedGames = 0;
-          int playingGames = 0;
-          for (ContributeGameInfo game : contributeGames) { // 已完成10局,正在进行5局,共15局,正在观看第3局
-            if (game.complete) finishedGames++;
-            else playingGames++;
-          }
-          if (Lizzie.frame.contributeView != null)
-            Lizzie.frame.contributeView.setGames(finishedGames, playingGames);
+          setViewGames();
           if (watchingGameIndex == -1 && contributeGames.size() > 0) {
             watchingGameIndex = 0;
             setGameToBoard(contributeGames.get(0), watchingGameIndex, false);
@@ -296,11 +330,23 @@ public class ContributeEngine {
                 }
               }
             }
+            setViewGames();
           }
         }
       }
       parseTips(line);
     }
+  }
+
+  private void setViewGames() {
+    int finishedGames = 0;
+    int playingGames = 0;
+    for (ContributeGameInfo game : contributeGames) {
+      if (game.complete) finishedGames++;
+      else playingGames++;
+    }
+    if (Lizzie.frame.contributeView != null)
+      Lizzie.frame.contributeView.setGames(finishedGames, playingGames);
   }
 
   private void parseTips(String line) {
@@ -382,16 +428,28 @@ public class ContributeEngine {
     if (line.contains("Signal to stop")) {
       setEternalTip(Lizzie.resourceBundle.getString("Contribute.tips.signalToStop"));
     }
-    if (line.contains("Exited cleanly after signal")) {
+    if (line.contains("Exited cleanly after signal") || line.contains("All cleaned up, quitting")) {
+      isNormalEnd = true;
       Utils.showMsg(Lizzie.resourceBundle.getString("Contribute.tips.exitedAfterSignal"));
-      if (Lizzie.frame.contributeView != null) Lizzie.frame.contributeView.setVisible(false);
+      Menu.engineMenu.setText(Lizzie.resourceBundle.getString("Menu.noEngine"));
+      if (Lizzie.frame.contributeView != null) Lizzie.frame.contributeView.exitedAfterSignal();
+    }
+    if (line.contains("Pausing contribute")) {
+      setTip(Lizzie.resourceBundle.getString("Contribute.tips.PauseHaveSent"), true);
+    }
+    if (line.contains("Resuming contribute")) {
+      setTip(Lizzie.resourceBundle.getString("Contribute.tips.ResumeHaveSent"), true);
     }
   }
 
   private boolean hasEternalTip = false;
 
   private void setTip(String text) {
-    if (hasEternalTip) return;
+    setTip(text, false);
+  }
+
+  private void setTip(String text, boolean isPauseAndResume) {
+    if (hasEternalTip && !isPauseAndResume) return;
     if (Lizzie.frame.contributeView != null) Lizzie.frame.contributeView.setTip(text);
   }
 
@@ -424,14 +482,65 @@ public class ContributeEngine {
     return Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
   }
 
+  public void slowQuit() {
+    // TODO Auto-generated method stub
+    // if (useProcessHandler) {
+    if (!isSlowQuiting) {
+      try {
+        outputStream.write(("quit" + "\n").getBytes());
+        outputStream.flush();
+        isSlowQuiting = true;
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    } else {
+      Utils.showMsg(Lizzie.resourceBundle.getString("Contribute.slowQuit.repeatedly"));
+    }
+    //  }
+  }
+
+  public void togglePause() {
+    if (paused) {
+      try {
+        outputStream.write(("resume" + "\n").getBytes());
+        outputStream.flush();
+      } catch (IOException e) {
+      }
+      paused = false;
+      Lizzie.frame.isContributing = true;
+      Menu.engineMenu.setText(
+          Lizzie.resourceBundle.getString("Contribute.engineMenu.contributing"));
+    } else {
+      try {
+        outputStream.write(("pause" + "\n").getBytes());
+        outputStream.flush();
+      } catch (IOException e) {
+      }
+      paused = true;
+      Lizzie.frame.isContributing = false;
+      Menu.engineMenu.setText(Lizzie.resourceBundle.getString("Menu.noEngine"));
+    }
+
+    if (Lizzie.frame.contributeView != null) Lizzie.frame.contributeView.setBtnPauseResume(paused);
+  }
+
+  public void pauseAndResume() {
+    if (System.currentTimeMillis() - lastPauseResumeTime < 2000) {
+      Utils.showMsg(Lizzie.resourceBundle.getString("Contribute.pauseResumeTooFrequently"));
+      return;
+    }
+    lastPauseResumeTime = System.currentTimeMillis();
+    togglePause();
+  }
+
   public void normalQuit() {
     isNormalEnd = true;
     Lizzie.frame.isShowingContributeGame = false;
     Lizzie.frame.isContributing = false;
-    if (useJavaSSH) javaSSH.close();
-    if (useProcessHandler) {
+    if (useJavaSSH) {
       try {
-        outputStream.write(("fastquit" + "\n").getBytes());
+        outputStream.write(("forcequit" + "\n").getBytes());
         outputStream.flush();
       } catch (IOException e) {
       }
@@ -441,16 +550,16 @@ public class ContributeEngine {
       } catch (Exception e) {
       }
     }
+    if (useJavaSSH) javaSSH.close();
     if (watchGameThread != null) watchGameThread.interrupt();
     Menu.engineMenu.setText(Lizzie.resourceBundle.getString("Menu.noEngine"));
     Lizzie.frame.contributeEngine = null;
   }
 
   private void shutdown() {
-    if (useJavaSSH) javaSSH.close();
-    if (useProcessHandler) {
+    if (useJavaSSH) {
       try {
-        outputStream.write(("fastquit" + "\n").getBytes());
+        outputStream.write(("forcequit" + "\n").getBytes());
         outputStream.flush();
       } catch (IOException e) {
       }
@@ -461,9 +570,10 @@ public class ContributeEngine {
       }
     }
     Lizzie.frame.isContributing = false;
+    if (useJavaSSH) javaSSH.close();
   }
 
-  private void initializeStreams(boolean needOutputStream) {
+  private void initializeStreams() {
     inputStream = new BufferedReader(new InputStreamReader(process.getInputStream()));
     outputStream = new BufferedOutputStream(process.getOutputStream());
     errorStream = new BufferedReader(new InputStreamReader(process.getErrorStream()));
@@ -503,14 +613,15 @@ public class ContributeEngine {
           tryToUseUnParseGameInfos(currentGame, unParseInfos);
           if (currentGame == currentWatchGame) {
             setGameToBoard(currentGame, watchingGameIndex, false);
-            if (Lizzie.board.getHistory().getCurrentHistoryNode().next().isPresent()
-                && !Lizzie.board
-                    .getHistory()
-                    .getCurrentHistoryNode()
-                    .next()
-                    .get()
-                    .next()
-                    .isPresent()) Lizzie.board.nextMove(true);
+            if (Lizzie.config.contributeWatchAlwaysLastMove)
+              if (Lizzie.board.getHistory().getCurrentHistoryNode().next().isPresent()
+                  && !Lizzie.board
+                      .getHistory()
+                      .getCurrentHistoryNode()
+                      .next()
+                      .get()
+                      .next()
+                      .isPresent()) Lizzie.board.nextMove(true);
           }
         }
       } else {
@@ -694,6 +805,11 @@ public class ContributeEngine {
           .getGameInfo()
           .setPlayerWhite(currentWatchGame.whitePlayer.replaceAll(" ", ""));
       Lizzie.board.getHistory().getGameInfo().setKomi(currentWatchGame.komi);
+      Lizzie.board.getHistory().getStart().getData().comment =
+          Utils.getRuleString(currentWatchGame.rules)
+              + "\r\n"
+              + Lizzie.resourceBundle.getString("ContributeView.lblKomi")
+              + currentWatchGame.komi;
       setTypeAndKomiToView(currentWatchGame.isRatingGame, currentWatchGame.komi);
       setRulesToView(currentWatchGame.rules);
       if (currentWatchGame.complete) {
@@ -930,9 +1046,12 @@ public class ContributeEngine {
           if (move.isPass) {
             if (status.startNode.next().isPresent())
               status.startNode = status.startNode.next().get();
-            else return status;
+            else {
+              getRemainList(list, remainList, i + 1);
+              return status;
+            }
           } else {
-            getRemainList(list, remainList, i + 1);
+            status.isSame = false;
             return status;
           }
         }
@@ -1035,25 +1154,7 @@ public class ContributeEngine {
     return contributeGames.size() - 1;
   }
 
-  public void slowQuit() {
-    // TODO Auto-generated method stub
-    if (useProcessHandler) {
-      if (!isSlowQuiting) {
-        try {
-          outputStream.write(("slowquit" + "\n").getBytes());
-          outputStream.flush();
-          isSlowQuiting = true;
-        } catch (IOException e) {
-          // TODO Auto-generated catch block
-          e.printStackTrace();
-        }
-      } else {
-        Utils.showMsg(Lizzie.resourceBundle.getString("Contribute.slowQuit.repeatedly"));
-      }
-    }
-  }
-
-  public boolean canSlowClose() {
-    return useProcessHandler;
-  }
+  //  public boolean canSlowClose() {
+  //    return useProcessHandler;
+  //  }
 }
