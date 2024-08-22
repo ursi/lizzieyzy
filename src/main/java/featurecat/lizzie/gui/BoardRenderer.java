@@ -194,53 +194,68 @@ public class BoardRenderer {
       }
     }
 
-    if (!Lizzie.frame.isInScoreMode) drawBranch();
-    else isShowingBranch = false;
+      if (!Lizzie.frame.isInScoreMode) drawBranch();
+      else isShowingBranch = false;
 
-    if (!isShowingBranch) drawStones();
-    drawEstimate();
-    renderImages(g);
+      if (!isShowingBranch) drawStones();
+      drawEstimate();
+      renderImages(g);
 
-    if (Lizzie.config.allowMoveNumber == 0
-        && !Lizzie.frame.isInPlayMode()
-        && !EngineManager.isEngineGame
-        && Lizzie.config.moveRankMarkLastMove >= 0) {
-      squareWidth = squareWidth * 2;
-      availableWidth = availableWidth * 2;
-      drawMoveRankMark(g);
-      availableWidth = availableWidth / 2;
-      squareWidth = squareWidth / 2;
-      if (isShowingBranch) drawMoveNumbers(g);
-    } else drawMoveNumbers(g);
+      if (Lizzie.config.allowMoveNumber == 0
+          && !Lizzie.frame.isInPlayMode()
+          && !EngineManager.isEngineGame
+          && Lizzie.config.moveRankMarkLastMove >= 0) {
+        squareWidth = squareWidth * 2;
+        availableWidth = availableWidth * 2;
+        drawMoveRankMark(g);
+        availableWidth = availableWidth / 2;
+        squareWidth = squareWidth / 2;
+        if (isShowingBranch) drawMoveNumbers(g);
+      } else drawMoveNumbers(g);
 
-    if (Lizzie.frame.isInScoreMode) {
-    } else {
-      if (!Lizzie.config.isShowingMarkupTools) drawStoneMarkup(g);
-      this.shouldIgnoreBestMove = false;
-      if (!isMouseOverNextBlunder) isShowingNextMoveBlunder = false;
-      if (!isShowingRawBoard()) {
-        if (Lizzie.config.showNextMoves && !isShowingBranch) {
-          drawNextMoves(g);
-        }
-        // timer.lap("movenumbers");
-        if (Lizzie.config.showBestMovesNow()) {
-          if ((Lizzie.board.getHistory().isBlacksTurn() && Lizzie.config.showBlackCandidates)
-              || (!Lizzie.board.getHistory().isBlacksTurn() && Lizzie.config.showWhiteCandidates)) {
-            if (!Lizzie.frame.isShowingHeatmap && !Lizzie.frame.isShowingPolicy) {
-              drawUnimportantSuggCount = drawUnimportantSuggCount + 1;
-              if (drawUnimportantSuggCount > 100 / getInterval()) {
-                drawLeelazSuggestionsUnimportant();
-                drawUnimportantSuggCount = 0;
+      if (Lizzie.frame.isInScoreMode) {
+      } else {
+        if (!Lizzie.config.isShowingMarkupTools) drawStoneMarkup(g);
+        this.shouldIgnoreBestMove = false;
+        if (!isMouseOverNextBlunder) isShowingNextMoveBlunder = false;
+        if (!isShowingRawBoard()) {
+          if (Lizzie.config.showNextMoves && !isShowingBranch) {
+            drawNextMoves(g);
+          }
+          // timer.lap("movenumbers");
+          if (Lizzie.config.showBestMovesNow()) {
+            if ((Lizzie.board.getHistory().isBlacksTurn() && Lizzie.config.showBlackCandidates)
+                || (!Lizzie.board.getHistory().isBlacksTurn() && Lizzie.config.showWhiteCandidates)) {
+              if (!Lizzie.frame.isShowingHeatmap && !Lizzie.frame.isShowingPolicy) {
+                drawUnimportantSuggCount = drawUnimportantSuggCount + 1;
+                if (drawUnimportantSuggCount > 100 / getInterval()) {
+                  drawLeelazSuggestionsUnimportant();
+                  drawUnimportantSuggCount = 0;
+                }
+                renderImagesUnimportant(g);
               }
-              renderImagesUnimportant(g);
-            }
-            squareWidth = squareWidth * 2;
-            availableWidth = availableWidth * 2;
-            drawLeelazSuggestions(g);
-            availableWidth = availableWidth / 2;
-            squareWidth = squareWidth / 2;
-          } else if (Lizzie.frame.isAnaPlayingAgainstLeelaz && Lizzie.config.UsePureNetInGame) {
+              squareWidth = squareWidth * 2;
+              availableWidth = availableWidth * 2;
+              drawLeelazSuggestions(g);
+              availableWidth = availableWidth / 2;
+              squareWidth = squareWidth / 2;
+            } else if (Lizzie.frame.isAnaPlayingAgainstLeelaz && Lizzie.config.UsePureNetInGame) {
 
+              if (Lizzie.frame.playerIsBlack && !Lizzie.board.getHistory().isBlacksTurn()) {
+                squareWidth = squareWidth * 2;
+                availableWidth = availableWidth * 2;
+                drawLeelazSuggestions(g);
+                availableWidth = availableWidth / 2;
+                squareWidth = squareWidth / 2;
+              } else if (!Lizzie.frame.playerIsBlack && Lizzie.board.getHistory().isBlacksTurn()) {
+                squareWidth = squareWidth * 2;
+                availableWidth = availableWidth * 2;
+                drawLeelazSuggestions(g);
+                availableWidth = availableWidth / 2;
+                squareWidth = squareWidth / 2;
+              }
+            }
+          } else if (Lizzie.frame.isAnaPlayingAgainstLeelaz && Lizzie.config.UsePureNetInGame) {
             if (Lizzie.frame.playerIsBlack && !Lizzie.board.getHistory().isBlacksTurn()) {
               squareWidth = squareWidth * 2;
               availableWidth = availableWidth * 2;
@@ -255,28 +270,13 @@ public class BoardRenderer {
               squareWidth = squareWidth / 2;
             }
           }
-        } else if (Lizzie.frame.isAnaPlayingAgainstLeelaz && Lizzie.config.UsePureNetInGame) {
-          if (Lizzie.frame.playerIsBlack && !Lizzie.board.getHistory().isBlacksTurn()) {
-            squareWidth = squareWidth * 2;
-            availableWidth = availableWidth * 2;
-            drawLeelazSuggestions(g);
-            availableWidth = availableWidth / 2;
-            squareWidth = squareWidth / 2;
-          } else if (!Lizzie.frame.playerIsBlack && Lizzie.board.getHistory().isBlacksTurn()) {
-            squareWidth = squareWidth * 2;
-            availableWidth = availableWidth * 2;
-            drawLeelazSuggestions(g);
-            availableWidth = availableWidth / 2;
-            squareWidth = squareWidth / 2;
-          }
         }
-      }
-      if (isMouseOverNextBlunder) drawNextBlunderFirstMove(g);
-      if (Lizzie.config.isShowingMarkupTools) drawStoneMarkup(g);
-      if (Lizzie.frame.clickbadmove != LizzieFrame.outOfBoundCoordinate)
-        drawbadstone(Lizzie.frame.clickbadmove[0], Lizzie.frame.clickbadmove[1], g);
-      g.drawImage(cachedStonesShadowImagedraged, x, y, null);
-      g.drawImage(cachedStonesImagedraged, x, y, null);
+        if (isMouseOverNextBlunder) drawNextBlunderFirstMove(g);
+        if (Lizzie.config.isShowingMarkupTools) drawStoneMarkup(g);
+        if (Lizzie.frame.clickbadmove != LizzieFrame.outOfBoundCoordinate)
+          drawbadstone(Lizzie.frame.clickbadmove[0], Lizzie.frame.clickbadmove[1], g);
+        g.drawImage(cachedStonesShadowImagedraged, x, y, null);
+        g.drawImage(cachedStonesImagedraged, x, y, null);
       // timer.lap("leelaz");
     }
     // timer.print();
