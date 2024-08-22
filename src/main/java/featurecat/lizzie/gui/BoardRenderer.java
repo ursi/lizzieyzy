@@ -2433,10 +2433,7 @@ public class BoardRenderer {
             hue = cyanHue;
             //    hue2 = true;
           } else {
-            fraction = percentPlayouts;
-            fraction =
-                Math.pow(fraction, (double) 1 / Lizzie.config.suggestionColorRatio); // 提升好选点温度
-            //   hue2 = fraction > 0.375 ? true : false;
+            fraction = move.winrate / 100;
             hue = redHue + (greenHue - redHue) * (float) fraction;
           }
 
@@ -2444,7 +2441,7 @@ public class BoardRenderer {
           float brightness = 0.85f;
           float alpha;
           float alphaRatio = max(0, (float) log(percentPlayouts) / alphaFactor + 1);
-          alpha = minAlpha + (maxAlpha - minAlpha) * alphaRatio;
+          alpha = 255;
           Color hsbColor = Color.getHSBColor(hue, saturation, brightness);
           Color color =
               new Color(hsbColor.getRed(), hsbColor.getGreen(), hsbColor.getBlue(), (int) alpha);
@@ -3095,10 +3092,7 @@ public class BoardRenderer {
           if (isBestMove) {
             hue = cyanHue;
           } else {
-            double fraction = percentPlayouts;
-            fraction = percentPlayouts;
-            fraction =
-                Math.pow(fraction, (double) 1 / Lizzie.config.suggestionColorRatio); // 提升好选点温度
+            double fraction = move.winrate / 100;
             hue = redHue + (greenHue - redHue) * (float) fraction;
           }
 
@@ -3106,7 +3100,7 @@ public class BoardRenderer {
           float brightness = 0.85f;
           float alpha;
           float alphaRatio = max(0, (float) log(percentPlayouts) / alphaFactor + 1);
-          alpha = minAlpha + (maxAlpha - minAlpha) * alphaRatio;
+          alpha = 255;
 
           Color hsbColor = Color.getHSBColor(hue, saturation, brightness);
           Color color =
