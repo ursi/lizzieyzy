@@ -2427,18 +2427,11 @@ public class BoardRenderer {
                   : false;
           if (outOfOrder && !isMouseOver && hasBackground) continue;
 
-          float hue;
-          // boolean hue2;
-          if (isBestMove) {
-            hue = cyanHue;
-            //    hue2 = true;
-          } else {
-            fraction = move.winrate / 100;
-            hue = redHue + (greenHue - redHue) * (float) fraction;
-          }
+          float winrate = (float) move.winrate / 100;
+          float hue = redHue + (greenHue - redHue) * winrate;
 
-          float saturation = 1.0f;
-          float brightness = 0.85f;
+          float saturation = .5f + .5f * (1 - (float) Math.pow(winrate, 4));
+          float brightness = .7f + .3f * (float) Math.pow(winrate, 4);
           float alpha;
           float alphaRatio = max(0, (float) log(percentPlayouts) / alphaFactor + 1);
           alpha = 255;
@@ -3088,16 +3081,11 @@ public class BoardRenderer {
           if (!Lizzie.config.showNoSuggCircle && outOfOrder && !move.lastTimeUnlimited) continue;
           if (Board.getIndex(coords[0], coords[1]) < hasDrawBackground.length)
             hasDrawBackground[Board.getIndex(coords[0], coords[1])] = true;
-          float hue;
-          if (isBestMove) {
-            hue = cyanHue;
-          } else {
-            double fraction = move.winrate / 100;
-            hue = redHue + (greenHue - redHue) * (float) fraction;
-          }
+          float winrate = (float) move.winrate / 100;
+          float hue = redHue + (greenHue - redHue) * winrate;
 
-          float saturation = 1.0f;
-          float brightness = 0.85f;
+          float saturation = .5f + .5f * (1 - (float) Math.pow(winrate, 4));
+          float brightness = .7f + .3f * (float) Math.pow(winrate, 4);
           float alpha;
           float alphaRatio = max(0, (float) log(percentPlayouts) / alphaFactor + 1);
           alpha = 255;
